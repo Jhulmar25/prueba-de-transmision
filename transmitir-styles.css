@@ -1,0 +1,210 @@
+/* ============================================
+   RESET
+============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Segoe UI", sans-serif;
+  background: #f5f6f8;
+  color: #111;
+}
+
+/* ============================================
+   HEADER
+============================================ */
+.app-header {
+  width: 100%;
+  background: #ffffff;
+  padding: 12px 0;
+  text-align: center;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.app-header h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #222;
+}
+
+/* ============================================
+   MAIN
+============================================ */
+.app-main {
+  width: 100%;
+  height: calc(100% - 50px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================
+   VIDEO
+============================================ */
+.video-section {
+  flex: 1;
+  width: 100%;
+  background: #000;
+}
+
+.video-frame {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ============================================
+   PANEL INFERIOR
+============================================ */
+.panel-section {
+  background: #ffffff;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid #e5e5e5;
+}
+
+/* ============================================
+   TARJETA DE INFORMACIÓN
+============================================ */
+.info-card {
+  background: #fafafa;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e1e1e1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-card label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.info-card input {
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.info-card input:focus {
+  border-color: #4C82FF;
+  outline: none;
+}
+
+/* ============================================
+   ESTADO
+============================================ */
+.status-card {
+  background: #fafafa;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e1e1e1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.status-gps {
+  font-size: 13px;
+  color: #555;
+}
+
+/* ============================================
+   BOTÓN PRINCIPAL (INICIAR)
+============================================ */
+.btn-main {
+  width: 100%;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 700;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-primary {
+  background: #4C82FF;
+  color: white;
+}
+
+.btn-primary:active {
+  background: #3a67d6;
+}
+
+/* ============================================
+   BOTÓN FINALIZAR TRANSMISIÓN
+============================================ */
+.btn-finalizar {
+  width: 100%;
+  padding: 20px;
+  font-size: 18px;
+  font-weight: 800;
+  background: #ff4b4b;
+  color: white;
+  border: none;
+  border-radius: 0;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 50;
+}
+
+.btn-finalizar:active {
+  background: #e64242;
+}
+
+/* ============================================
+   MODO HORIZONTAL
+============================================ */
+@media (orientation: landscape) {
+  .app-main {
+    flex-direction: row;
+  }
+
+  .video-section {
+    flex: 2;
+  }
+
+  .panel-section {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    border-top: none;
+    border-left: 1px solid #e0e0e0;
+  }
+
+  .btn-finalizar {
+    position: absolute;
+    bottom: 0;
+  }
+}
+
+/* Scroll suave del panel */
+.panel-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-section::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
