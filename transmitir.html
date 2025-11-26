@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>SISTEMA DE TRANSMISIÓN</title>
 
-  <!-- MÁXIMA COMPATIBILIDAD CON MÓVILES -->
+  <!-- Soporte móvil real -->
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, user-scalable=no" />
 
@@ -13,58 +13,42 @@
 
 <body>
 
-  <!-- CABECERA SIMPLE -->
-  <header class="app-header">
-    <h1>SISTEMA DE TRANSMISIÓN</h1>
+  <!-- PANEL SUPERIOR (DATOS + ESTADO) -->
+  <header class="top-panel" id="panelDatos">
+
+    <h1 class="title">SISTEMA DE TRANSMISIÓN</h1>
+
+    <div class="info-card">
+      <label for="codigoInput">Código</label>
+      <input id="codigoInput" type="text" placeholder="Ej: S01" autocomplete="off" />
+
+      <label for="nombreInput">Nombre completo</label>
+      <input id="nombreInput" type="text" placeholder="Nombres y apellidos" />
+
+      <label for="dniInput">DNI</label>
+      <input id="dniInput" type="number" placeholder="Ej: 12345678" />
+    </div>
+
+    <div class="status-card">
+      <span id="estadoText">Listo para transmitir</span>
+      <small id="gpsText">GPS: sin ubicación</small>
+    </div>
   </header>
 
-  <!-- CONTENEDOR PRINCIPAL -->
-  <main class="app-main">
-
-    <!-- VIDEO (siempre ocupa casi toda la pantalla) -->
-    <section class="video-section">
-      <div class="video-frame">
-        <video id="localVideo" autoplay playsinline muted></video>
-      </div>
-    </section>
-
-    <!-- PANEL INFERIOR (solo visible antes de transmitir) -->
-    <section class="panel-section" id="panelDatos">
-
-      <!-- DATOS DEL SERENO -->
-      <div class="info-card">
-        <label for="codigoInput">Código de transmisión</label>
-        <input id="codigoInput" type="text"
-               placeholder="Ej: S01" autocomplete="off" />
-
-        <label for="nombreInput">Nombre completo</label>
-        <input id="nombreInput" type="text"
-               placeholder="Nombres y apellidos" autocomplete="name" />
-
-        <label for="dniInput">DNI</label>
-        <input id="dniInput" type="number"
-               placeholder="Ej: 12345678" inputmode="numeric" />
-      </div>
-
-      <!-- ESTADO -->
-      <div class="status-card">
-        <p>Estado: <span id="estadoText">Listo para transmitir</span></p>
-        <p class="status-gps" id="gpsText">GPS: sin ubicación</p>
-      </div>
-
-      <!-- BOTÓN PARA INICIAR -->
-      <button class="btn-main btn-primary" id="btnToggle">
-        Iniciar transmisión
-      </button>
-
-    </section>
-
-    <!-- BOTÓN INFERIOR EN MODO TRANSMISIÓN -->
-    <button class="btn-finalizar" id="btnDetener" style="display:none;">
-      DETENER TRANSMISIÓN
-    </button>
-
+  <!-- VIDEO ABAJO -->
+  <main class="video-area" id="videoContainer">
+    <video id="localVideo" autoplay playsinline muted></video>
   </main>
+
+  <!-- BOTÓN INICIAR -->
+  <button id="btnToggle" class="btn-action btn-primary">
+    INICIAR TRANSMISIÓN
+  </button>
+
+  <!-- BOTÓN DETENER (solo visible en transmisión) -->
+  <button id="btnDetener" class="btn-action btn-danger" style="display:none;">
+    DETENER TRANSMISIÓN
+  </button>
 
   <!-- SOCKET.IO -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
@@ -131,8 +115,7 @@
     async function registrarInicio({ codigo, nombre, dni }) {
       const { fechaKey, fechaTexto, horaTexto } = getFechaYHora();
 
-      let lat = null;
-      let lng = null;
+      let lat = null, lng = null;
 
       setGPS("obteniendo ubicación…");
 
@@ -233,17 +216,17 @@
       if (!dni) return alert("Ingresa el DNI");
 
       try {
-        // FULLSCREEN PARA TELÉFONO
+        // Fullscreen para mejor experiencia móvil
         try {
           const root = document.documentElement;
           if (root.requestFullscreen) await root.requestFullscreen();
         } catch (e) {}
 
-        // Activar cámara
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false,
+          video: { facingMode: { ideal: "environment" } },
+          audio: false
         });
+
         videoEl.srcObject = localStream;
 
         prepararSocket();
@@ -253,6 +236,7 @@
 
         // UI
         panelDatos.style.display = "none";
+        btnToggle.style.display = "none";
         btnDetener.style.display = "block";
 
         transmitting = true;
@@ -270,8 +254,9 @@
 
       await marcarFin();
 
-      // UI RESTAURUACIÓN
+      // Restaurar UI
       panelDatos.style.display = "flex";
+      btnToggle.style.display = "block";
       btnDetener.style.display = "none";
 
       if (document.fullscreenElement) document.exitFullscreen();
@@ -280,6 +265,7 @@
 
     btnToggle.onclick = () => start();
     btnDetener.onclick = () => stop();
+
   </script>
 </body>
 </html>
