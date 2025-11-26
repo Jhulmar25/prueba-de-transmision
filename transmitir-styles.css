@@ -1,5 +1,5 @@
 /* ============================================
-   RESET
+   RESET & BASE
 ============================================ */
 * {
   margin: 0;
@@ -8,103 +8,68 @@
 }
 
 html, body {
-  width: 100%;
   height: 100%;
+  background: #f0f2f7;
+  font-family: "Inter", "Segoe UI", -apple-system, sans-serif;
+  color: #1a1a1a;
   overflow: hidden;
-  font-family: "Segoe UI", sans-serif;
-  background: #f5f6f8;
+}
+
+/* ============================================
+   PANEL SUPERIOR (DATOS)
+============================================ */
+.top-panel {
+  width: 100%;
+  padding: 18px 18px 12px;
+  background: #ffffffcc;
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e2e4ea;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: fadeIn 0.35s ease;
+}
+
+.title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 800;
   color: #111;
 }
 
 /* ============================================
-   HEADER
-============================================ */
-.app-header {
-  width: 100%;
-  background: #ffffff;
-  padding: 12px 0;
-  text-align: center;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.app-header h1 {
-  font-size: 18px;
-  font-weight: 700;
-  color: #222;
-}
-
-/* ============================================
-   MAIN
-============================================ */
-.app-main {
-  width: 100%;
-  height: calc(100% - 50px);
-  display: flex;
-  flex-direction: column;
-}
-
-/* ============================================
-   VIDEO
-============================================ */
-.video-section {
-  flex: 1;
-  width: 100%;
-  background: #000;
-}
-
-.video-frame {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #000;
-}
-
-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* ============================================
-   PANEL INFERIOR
-============================================ */
-.panel-section {
-  background: #ffffff;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  border-top: 1px solid #e5e5e5;
-}
-
-/* ============================================
-   TARJETA DE INFORMACIÓN
+   TARJETA DE DATOS (MODERNA)
 ============================================ */
 .info-card {
-  background: #fafafa;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid #e1e1e1;
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  border: 1px solid #e3e6ee;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .info-card label {
   font-size: 14px;
   font-weight: 600;
+  color: #343a40;
 }
 
 .info-card input {
-  padding: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #ced4da;
   font-size: 16px;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  background: #fff;
+  background: #fbfbfe;
+  transition: 0.22s ease;
 }
 
 .info-card input:focus {
-  border-color: #4C82FF;
+  border-color: #4c7eff;
+  box-shadow: 0 0 0 4px #4c7eff33;
   outline: none;
 }
 
@@ -112,99 +77,131 @@ video {
    ESTADO
 ============================================ */
 .status-card {
-  background: #fafafa;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid #e1e1e1;
-  text-align: center;
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #e1e4ea;
   font-size: 15px;
+  text-align: center;
   font-weight: 600;
+  color: #2c2c2c;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
 }
-
-.status-gps {
-  font-size: 13px;
-  color: #555;
+.status-card small {
+  color: #6d6d6d;
+  margin-top: 6px;
+  display: block;
 }
 
 /* ============================================
-   BOTÓN PRINCIPAL (INICIAR)
+   VIDEO (PROFESIONAL)
 ============================================ */
-.btn-main {
+.video-area {
+  flex: 1;
+  background: #000;
+  position: relative;
+  border-top: 1px solid #e2e4ea;
+}
+
+video {
   width: 100%;
-  padding: 16px;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 20px 20px 0 0;
+}
+
+/* ============================================
+   BOTÓN PROFESIONAL FLOTANTE
+============================================ */
+.btn-action {
+  width: 90%;
+  max-width: 500px;
+  margin: auto;
+  padding: 18px;
   font-size: 18px;
-  font-weight: 700;
-  border-radius: 12px;
+  font-weight: 800;
   border: none;
-  cursor: pointer;
-  transition: 0.2s;
+  border-radius: 14px;
+  letter-spacing: 0.5px;
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+  transition: 0.25s ease;
+  animation: slideUp 0.35s ease;
 }
 
 .btn-primary {
-  background: #4C82FF;
-  color: white;
+  background: linear-gradient(135deg, #4c82ff, #2d59e5);
 }
 
 .btn-primary:active {
-  background: #3a67d6;
+  transform: translateX(-50%) scale(0.96);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ff4d4d, #d63636);
+}
+
+.btn-danger:active {
+  transform: translateX(-50%) scale(0.96);
 }
 
 /* ============================================
-   BOTÓN FINALIZAR TRANSMISIÓN
-============================================ */
-.btn-finalizar {
-  width: 100%;
-  padding: 20px;
-  font-size: 18px;
-  font-weight: 800;
-  background: #ff4b4b;
-  color: white;
-  border: none;
-  border-radius: 0;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  text-align: center;
-  z-index: 50;
-}
-
-.btn-finalizar:active {
-  background: #e64242;
-}
-
-/* ============================================
-   MODO HORIZONTAL
+   MODO HORIZONTAL — APP PRO REAL
 ============================================ */
 @media (orientation: landscape) {
-  .app-main {
+  body {
+    display: flex;
     flex-direction: row;
   }
 
-  .video-section {
-    flex: 2;
-  }
-
-  .panel-section {
-    flex: 1;
+  .top-panel {
     height: 100%;
+    width: 38%;
+    border-right: 1px solid #e4e4e4;
+    border-bottom: none;
     overflow-y: auto;
-    border-top: none;
-    border-left: 1px solid #e0e0e0;
+    padding-bottom: 80px;
   }
 
-  .btn-finalizar {
-    position: absolute;
-    bottom: 0;
+  .video-area {
+    width: 62%;
+    height: 100%;
+    border-top: none;
+  }
+
+  .btn-action {
+    width: calc(38% - 20px);
+    left: 19%;
+    border-radius: 10px;
+  }
+
+  video {
+    border-radius: 0;
   }
 }
 
-/* Scroll suave del panel */
-.panel-section::-webkit-scrollbar {
+/* Scroll suave */
+.top-panel::-webkit-scrollbar {
   width: 6px;
 }
+.top-panel::-webkit-scrollbar-thumb {
+  background: #cccccc;
+  border-radius: 6px;
+}
 
-.panel-section::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 4px;
+/* ============================================
+   ANIMACIONES
+============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translate(-50%, 40px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
 }
