@@ -4,268 +4,54 @@
   <meta charset="UTF-8" />
   <title>SISTEMA DE TRANSMISIÓN</title>
 
-  <!-- Soporte móvil real -->
+  <!-- NECESARIO PARA iPHONE -->
   <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
 
   <link rel="stylesheet" href="transmitir-styles.css" />
 </head>
 
 <body>
 
-  <!-- PANEL SUPERIOR (DATOS + ESTADO) -->
-  <header class="top-panel" id="panelDatos">
-
-    <h1 class="title">SISTEMA DE TRANSMISIÓN</h1>
-
-    <div class="info-card">
-      <label for="codigoInput">Código</label>
-      <input id="codigoInput" type="text" placeholder="Ej: S01" autocomplete="off" />
-
-      <label for="nombreInput">Nombre completo</label>
-      <input id="nombreInput" type="text" placeholder="Nombres y apellidos" />
-
-      <label for="dniInput">DNI</label>
-      <input id="dniInput" type="number" placeholder="Ej: 12345678" />
-    </div>
-
-    <div class="status-card">
-      <span id="estadoText">Listo para transmitir</span>
-      <small id="gpsText">GPS: sin ubicación</small>
-    </div>
+  <header>
+    <h1>SISTEMA DE TRANSMISIÓN</h1>
   </header>
 
-  <!-- VIDEO ABAJO -->
-  <main class="video-area" id="videoContainer">
-    <video id="localVideo" autoplay playsinline muted></video>
-  </main>
+  <div class="container">
 
-  <!-- BOTÓN INICIAR -->
-  <button id="btnToggle" class="btn-action btn-primary">
-    INICIAR TRANSMISIÓN
-  </button>
+    <!-- 🔵 FORMULARIO (primero) -->
+    <div id="formSection" class="info-card">
+      <label for="codigoInput">Ingrese su DNI:</label>
+      <input id="codigoInput" type="text" placeholder="Ej: 12345678" autocomplete="off" />
 
-  <!-- BOTÓN DETENER (solo visible en transmisión) -->
-  <button id="btnDetener" class="btn-action btn-danger" style="display:none;">
-    DETENER TRANSMISIÓN
-  </button>
+      <label for="nombreInput">Nombre completo:</label>
+      <input id="nombreInput" type="text" placeholder="Nombres y apellidos" autocomplete="off" />
+
+      <button class="btn btn-primary" id="btnStart">Iniciar transmisión</button>
+    </div>
+
+    <!-- 🔵 SECCIÓN DEL VIDEO (oculta al inicio) -->
+    <div id="videoSection" class="hidden">
+
+      <div class="video-area">
+        <video id="localVideo" autoplay playsinline muted></video>
+      </div>
+
+      <div class="status">
+        Estado: <span id="estadoText">Listo para transmitir</span><br />
+        <small id="gpsText">GPS: sin ubicación</small>
+      </div>
+
+      <button class="btn btn-danger" id="btnStop">Detener transmisión</button>
+    </div>
+
+  </div>
 
   <!-- SOCKET.IO -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
   <!-- SCRIPT PRINCIPAL -->
-  <script type="module">
-    import {
-      db,
-      collection,
-      addDoc,
-      updateDoc,
-      serverTimestamp
-    } from "./firebase-config.js";
+  <script type="module" src="transmitir.js"></script>
 
-    const SIGNALING_URL =
-      "https://bodycam-server-200816039529.us-central1.run.app";
-
-    const pcConfig = {
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-    };
-
-    let socket = null;
-    let pc = null;
-    let localStream = null;
-    let roomId = null;
-    let transmitting = false;
-    let currentDocRef = null;
-
-    const videoEl = document.getElementById("localVideo");
-    const estadoEl = document.getElementById("estadoText");
-    const gpsEl = document.getElementById("gpsText");
-
-    const panelDatos = document.getElementById("panelDatos");
-    const btnToggle = document.getElementById("btnToggle");
-    const btnDetener = document.getElementById("btnDetener");
-
-    const codigoInput = document.getElementById("codigoInput");
-    const nombreInput = document.getElementById("nombreInput");
-    const dniInput = document.getElementById("dniInput");
-
-    function setEstado(msg) {
-      estadoEl.textContent = msg;
-    }
-
-    function setGPS(msg) {
-      gpsEl.textContent = "GPS: " + msg;
-    }
-
-    function getFechaYHora() {
-      const now = new Date();
-      const d = String(now.getDate()).padStart(2, "0");
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const y = now.getFullYear();
-      const h = String(now.getHours()).padStart(2, "0");
-      const min = String(now.getMinutes()).padStart(2, "0");
-
-      return {
-        fechaKey: `${d}-${m}-${y}`,
-        fechaTexto: `${d}-${m}-${y}`,
-        horaTexto: `${h}:${min}`,
-      };
-    }
-
-    async function registrarInicio({ codigo, nombre, dni }) {
-      const { fechaKey, fechaTexto, horaTexto } = getFechaYHora();
-
-      let lat = null, lng = null;
-
-      setGPS("obteniendo ubicación…");
-
-      try {
-        const pos = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 8000,
-          });
-        });
-
-        lat = pos.coords.latitude;
-        lng = pos.coords.longitude;
-        setGPS(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-      } catch (err) {
-        setGPS("no disponible");
-      }
-
-      const colRef = collection(db, "videos", fechaKey, "registros");
-
-      const payload = {
-        codigo,
-        nombre,
-        dni,
-        fecha: fechaTexto,
-        hora: horaTexto,
-        lat,
-        lng,
-        activo: true,
-        creadoEn: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(colRef, payload);
-      currentDocRef = docRef;
-    }
-
-    async function marcarFin() {
-      if (!currentDocRef) return;
-
-      await updateDoc(currentDocRef, {
-        activo: false,
-        finalizadoEn: serverTimestamp(),
-      });
-    }
-
-    function prepararSocket() {
-      if (socket) socket.disconnect();
-
-      socket = io(SIGNALING_URL, { transports: ["websocket"] });
-
-      socket.on("connect", () => {
-        socket.emit("join-room", { roomId, role: "sender" });
-      });
-
-      socket.on("answer", async ({ answer }) => {
-        if (pc && pc.signalingState !== "closed") {
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        }
-      });
-
-      socket.on("ice-candidate", ({ candidate }) => {
-        if (candidate && pc) pc.addIceCandidate(new RTCIceCandidate(candidate));
-      });
-
-      socket.on("user-joined", () => {
-        reenviarOferta();
-      });
-    }
-
-    async function crearPeerConnection() {
-      pc = new RTCPeerConnection(pcConfig);
-
-      pc.onicecandidate = (e) => {
-        if (e.candidate) {
-          socket.emit("ice-candidate", { roomId, candidate: e.candidate });
-        }
-      };
-
-      localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
-    }
-
-    async function reenviarOferta() {
-      if (!pc) return;
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      socket.emit("offer", { roomId, offer });
-    }
-
-    async function start() {
-      roomId = codigoInput.value.trim().toUpperCase();
-      const nombre = nombreInput.value.trim();
-      const dni = dniInput.value.trim();
-
-      if (!roomId) return alert("Ingresa el código");
-      if (!nombre) return alert("Ingresa el nombre");
-      if (!dni) return alert("Ingresa el DNI");
-
-      try {
-        // Fullscreen para mejor experiencia móvil
-        try {
-          const root = document.documentElement;
-          if (root.requestFullscreen) await root.requestFullscreen();
-        } catch (e) {}
-
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-          audio: false
-        });
-
-        videoEl.srcObject = localStream;
-
-        prepararSocket();
-        await crearPeerConnection();
-        await reenviarOferta();
-        await registrarInicio({ codigo: roomId, nombre, dni });
-
-        // UI
-        panelDatos.style.display = "none";
-        btnToggle.style.display = "none";
-        btnDetener.style.display = "block";
-
-        transmitting = true;
-
-      } catch (err) {
-        alert("Error iniciando transmisión");
-        console.error(err);
-      }
-    }
-
-    async function stop() {
-      if (socket) socket.disconnect();
-      if (pc) pc.close();
-      if (localStream) localStream.getTracks().forEach((t) => t.stop());
-
-      await marcarFin();
-
-      // Restaurar UI
-      panelDatos.style.display = "flex";
-      btnToggle.style.display = "block";
-      btnDetener.style.display = "none";
-
-      if (document.fullscreenElement) document.exitFullscreen();
-      transmitting = false;
-    }
-
-    btnToggle.onclick = () => start();
-    btnDetener.onclick = () => stop();
-
-  </script>
 </body>
 </html>
