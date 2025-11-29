@@ -120,19 +120,19 @@ video {
   display: none !important;
 }
 
-/* ============================================
-   🟦 MODO HORIZONTAL (LANDSCAPE)
-   CUANDO EL TELÉFONO ESTÁ ACOSTADO
-============================================ */
+/* ==========================================================
+   🔵 MODO HORIZONTAL (LANDSCAPE)
+   SOLO SE ACTIVA CUANDO ESTÁS TRANSMITIENDO
+   Se detecta con la clase "transmitting-mode" en el <body>
+========================================================== */
 @media screen and (orientation: landscape) {
 
-  /* Ocultar título */
-  header {
+  /* Ocultar encabezado SOLO si estás transmitiendo */
+  body.transmitting-mode header {
     display: none !important;
   }
 
-  /* Ajustar contenedor */
-  .container {
+  body.transmitting-mode .container {
     padding: 0;
     margin: 0;
     height: 100vh;
@@ -140,13 +140,13 @@ video {
     justify-content: center;
   }
 
-  /* Ocultar formulario COMPLETAMENTE */
-  #formSection {
+  /* Ocultar formulario SOLO durante transmisión */
+  body.transmitting-mode #formSection {
     display: none !important;
   }
 
-  /* Mostrar sección de video en toda la pantalla */
-  #videoSection {
+  /* Video ocupa toda la pantalla */
+  body.transmitting-mode #videoSection {
     display: flex !important;
     flex-direction: column;
     justify-content: center;
@@ -157,35 +157,32 @@ video {
     background: black;
   }
 
-  /* Video tamaño completo */
-  .video-area {
+  body.transmitting-mode .video-area {
     width: 100vw !important;
     height: 100vh !important;
     border-radius: 0 !important;
-    border: none !important;
   }
 
-  video {
+  body.transmitting-mode video {
     width: 100vw !important;
     height: 100vh !important;
     object-fit: cover;
   }
 
-  /* Ocultar el estado */
-  .status {
+  /* ocultar estado durante transmisión */
+  body.transmitting-mode .status {
     display: none !important;
   }
 
-  /* Botón detener flotante en horizontal */
-  #btnStop {
+  /* botón detener en horizontal */
+  body.transmitting-mode #btnStop {
     position: absolute;
-    bottom: 24px;
-    right: 24px;
-    width: auto !important;
-    padding: 14px 28px;
-    border-radius: 40px;
-    background: #ff4d4d;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+    bottom: 18px;
+    right: 18px;
+    width: auto;
+    padding: 14px 26px;
+    border-radius: 35px;
     font-size: 18px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.6);
   }
 }
