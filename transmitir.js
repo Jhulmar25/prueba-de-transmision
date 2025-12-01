@@ -173,9 +173,8 @@ async function start() {
 
     localStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
-      audio: true
+      audio: false
     });
-
 
     videoEl.srcObject = localStream;
 
