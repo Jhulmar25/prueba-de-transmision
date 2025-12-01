@@ -22,7 +22,6 @@ let socket = null;
 let pc = null;
 let localStream = null;
 let roomId = null;
-let transmitting = false;
 
 let currentDocRef = null;
 
@@ -107,8 +106,7 @@ async function registrarInicio({ codigo, nombre }) {
     creadoEn: serverTimestamp()
   };
 
-  const docRef = await addDoc(colRef, payload);
-  currentDocRef = docRef;
+  currentDocRef = await addDoc(colRef, payload);
 }
 
 /* =======================================================
@@ -124,13 +122,15 @@ function prepararSocket() {
   });
 
   socket.on("answer", async ({ answer }) => {
-    if (pc.signalingState !== "closed") {
+    if (pc && pc.signalingState !== "closed") {
       await pc.setRemoteDescription(new RTCSessionDescription(answer));
     }
   });
 
   socket.on("ice-candidate", ({ candidate }) => {
-    if (candidate && pc) pc.addIceCandidate(new RTCIceCandidate(candidate));
+    if (candidate && pc) {
+      pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
   });
 
   socket.on("user-joined", () => {
@@ -149,7 +149,10 @@ async function crearPeerConnection() {
     }
   };
 
-  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  // Enviar video + audio
+  localStream.getTracks().forEach(track => {
+    pc.addTrack(track, localStream);
+  });
 }
 
 async function reenviarOferta() {
@@ -169,13 +172,23 @@ async function start() {
   if (!nombre) return alert("Ingrese nombre");
 
   try {
-    setEstado("Activando cámara...");
+    setEstado("Activando cámara y micrófono...");
 
+    // 🔥 Agregamos manejo de errores de permisos
     localStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
-      audio: false
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    }).catch(err => {
+      alert("❌ Debes permitir cámara y micrófono para transmitir.");
+      console.error("Error permisos:", err);
+      throw err;
     });
 
+    // Mostrar en pantalla del emisor
     videoEl.srcObject = localStream;
 
     prepararSocket();
@@ -184,16 +197,14 @@ async function start() {
 
     await registrarInicio({ codigo: roomId, nombre });
 
-    transmitting = true;
-
     formSection.classList.add("hidden");
     videoSection.classList.remove("hidden");
 
     setEstado("Esperando visor…");
 
   } catch (err) {
-    alert("Error al iniciar cámara");
-    console.error(err);
+    console.error("Error general:", err);
+    alert("No se pudo iniciar la transmisión.");
   }
 }
 
@@ -213,8 +224,6 @@ async function stop() {
       finalizadoEn: serverTimestamp()
     });
   }
-
-  transmitting = false;
 
   formSection.classList.remove("hidden");
   videoSection.classList.add("hidden");
