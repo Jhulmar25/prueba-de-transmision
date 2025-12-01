@@ -1,3 +1,6 @@
+/* =======================================================
+   transmitir.js
+======================================================= */
 import {
   db,
   collection,
@@ -170,8 +173,9 @@ async function start() {
 
     localStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
-      audio: false
+      audio: true
     });
+
 
     videoEl.srcObject = localStream;
 
