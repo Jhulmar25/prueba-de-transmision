@@ -1,238 +1,317 @@
-/* =======================================================
-   transmitir.js
-======================================================= */
-import {
-  db,
-  collection,
-  addDoc,
-  updateDoc,
-  serverTimestamp
-} from "./firebase-config.js";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>SISTEMA DE TRANSMISIÓN</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="transmitir-styles.css" />
+</head>
 
-/* =======================================================
-   CONFIG
-======================================================= */
-const SIGNALING_URL = "https://bodycam-server-200816039529.us-central1.run.app";
+<body>
 
-const pcConfig = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
-};
+  <header>
+    <h1>SISTEMA DE TRANSMISIÓN</h1>
+  </header>
 
-let socket = null;
-let pc = null;
-let localStream = null;
-let roomId = null;
+  <div class="container">
 
-let currentDocRef = null;
+    <!-- DATOS DEL SERENO -->
+    <div class="info-card">
+      <label for="codigoInput">Ingrese su DNI: </label>
+      <input id="codigoInput" type="text" placeholder="Ej: 12345678" />
 
-/* =======================================================
-   DOM
-======================================================= */
-const formSection = document.getElementById("formSection");
-const videoSection = document.getElementById("videoSection");
+      <label for="nombreInput">Nombre completo: </label>
+      <input id="nombreInput" type="text" placeholder="Nombres y apellidos" />
 
-const videoEl = document.getElementById("localVideo");
-const estadoEl = document.getElementById("estadoText");
-const gpsEl = document.getElementById("gpsText");
+      
+    </div>
 
-const btnStart = document.getElementById("btnStart");
-const btnStop = document.getElementById("btnStop");
+    <!-- VIDEO LOCAL -->
+    <div class="video-area">
+      <video id="localVideo" autoplay playsinline muted></video>
+    </div>
 
-const codigoInput = document.getElementById("codigoInput");
-const nombreInput = document.getElementById("nombreInput");
+    <!-- ESTADO -->
+    <div class="status">
+      Estado: <span id="estadoText">Listo para transmitir</span><br />
+      <small id="gpsText">GPS: sin ubicación</small>
+    </div>
 
-/* =======================================================
-   UTILS
-======================================================= */
-function setEstado(msg) {
-  estadoEl.textContent = msg;
-}
+    <!-- BOTÓN PRINCIPAL -->
+    <button class="btn btn-primary" id="btnToggle">Iniciar transmisión</button>
 
-function setGPS(msg) {
-  gpsEl.textContent = "GPS: " + msg;
-}
+  </div>
 
-/* =======================================================
-   FIRESTORE
-======================================================= */
-function getFechaYHora() {
-  const now = new Date();
-  const d = String(now.getDate()).padStart(2, "0");
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const y = now.getFullYear();
-  const h = String(now.getHours()).padStart(2, "0");
-  const min = String(now.getMinutes()).padStart(2, "0");
+  <!-- SOCKET.IO -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
-  return {
-    fechaKey: `${d}-${m}-${y}`,
-    fechaTexto: `${d}-${m}-${y}`,
-    horaTexto: `${h}:${min}`
-  };
-}
+  <!-- SCRIPT PRINCIPAL -->
+  <script type="module">
+    import {
+      db,
+      collection,
+      addDoc,
+      updateDoc,
+      serverTimestamp
+    } from "./firebase-config.js";
 
-async function registrarInicio({ codigo, nombre }) {
-  const { fechaKey, fechaTexto, horaTexto } = getFechaYHora();
+    /*
+    ========================================================
+    CONFIG
+    ========================================================
+    */
+    const SIGNALING_URL = "https://bodycam-server-200816039529.us-central1.run.app";
 
-  let lat = null, lng = null;
+    const pcConfig = {
+      iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+    };
 
-  setGPS("obteniendo ubicación…");
+    let socket = null;
+    let pc = null;
+    let localStream = null;
+    let roomId = null;
+    let transmitting = false;
 
-  try {
-    const pos = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        enableHighAccuracy: true,
-        timeout: 8000
-      });
-    });
+    let currentDocRef = null; // Firestore doc del registro
 
-    lat = pos.coords.latitude;
-    lng = pos.coords.longitude;
-    setGPS(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+    /*
+    ========================================================
+    DOM
+    ========================================================
+    */
+    const videoEl   = document.getElementById("localVideo");
+    const estadoEl  = document.getElementById("estadoText");
+    const gpsEl     = document.getElementById("gpsText");
+    const btnToggle = document.getElementById("btnToggle");
 
-  } catch {
-    setGPS("no disponible");
-  }
+    const codigoInput = document.getElementById("codigoInput");
+    const nombreInput = document.getElementById("nombreInput");
+   
+    
 
-  const colRef = collection(db, "videos", fechaKey, "registros");
 
-  const payload = {
-    codigo,
-    nombre,
-    fecha: fechaTexto,
-    hora: horaTexto,
-    lat,
-    lng,
-    activo: true,
-    creadoEn: serverTimestamp()
-  };
-
-  currentDocRef = await addDoc(colRef, payload);
-}
-
-/* =======================================================
-   SOCKET & WEBRTC
-======================================================= */
-function prepararSocket() {
-  if (socket) socket.disconnect();
-
-  socket = io(SIGNALING_URL, { transports: ["websocket"] });
-
-  socket.on("connect", () => {
-    socket.emit("join-room", { roomId, role: "sender" });
-  });
-
-  socket.on("answer", async ({ answer }) => {
-    if (pc && pc.signalingState !== "closed") {
-      await pc.setRemoteDescription(new RTCSessionDescription(answer));
+    function setEstado(msg) {
+      estadoEl.textContent = msg;
+      console.log("[ESTADO]", msg);
     }
-  });
 
-  socket.on("ice-candidate", ({ candidate }) => {
-    if (candidate && pc) {
-      pc.addIceCandidate(new RTCIceCandidate(candidate));
+    function setGPS(msg) {
+      gpsEl.textContent = "GPS: " + msg;
+      console.log("[GPS]", msg);
     }
-  });
 
-  socket.on("user-joined", () => {
-    reenviarOferta();
-  });
+    /*
+    ========================================================
+    🔵 FIRESTORE
+    ========================================================
+    */
 
-  socket.on("detener-desde-web", () => stop());
-}
+    function getFechaYHora() {
+      const now = new Date();
+      const d = String(now.getDate()).padStart(2, "0");
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const y = now.getFullYear();
+      const h = String(now.getHours()).padStart(2, "0");
+      const min = String(now.getMinutes()).padStart(2, "0");
 
-async function crearPeerConnection() {
-  pc = new RTCPeerConnection(pcConfig);
-
-  pc.onicecandidate = (e) => {
-    if (e.candidate) {
-      socket.emit("ice-candidate", { roomId, candidate: e.candidate });
+      return {
+        fechaKey: `${d}-${m}-${y}`,
+        fechaTexto: `${d}-${m}-${y}`,
+        horaTexto: `${h}:${min}`
+      };
     }
-  };
 
-  // Enviar video + audio
-  localStream.getTracks().forEach(track => {
-    pc.addTrack(track, localStream);
-  });
-}
+    async function registrarInicio({ codigo, nombre }) {
+      const { fechaKey, fechaTexto, horaTexto } = getFechaYHora();
 
-async function reenviarOferta() {
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  socket.emit("offer", { roomId, offer });
-}
+      let lat = null, lng = null;
 
-/* =======================================================
-   PRINCIPALES
-======================================================= */
-async function start() {
-  roomId = codigoInput.value.trim();
-  const nombre = nombreInput.value.trim();
+      setGPS("obteniendo ubicación…");
 
-  if (!roomId) return alert("Ingrese DNI");
-  if (!nombre) return alert("Ingrese nombre");
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 8000
+          });
+        });
 
-  try {
-    setEstado("Activando cámara y micrófono...");
+        lat = pos.coords.latitude;
+        lng = pos.coords.longitude;
+        setGPS(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
 
-    // 🔥 Agregamos manejo de errores de permisos
-    localStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
+      } catch (err) {
+        setGPS("no disponible");
       }
-    }).catch(err => {
-      alert("❌ Debes permitir cámara y micrófono para transmitir.");
-      console.error("Error permisos:", err);
-      throw err;
-    });
 
-    // Mostrar en pantalla del emisor
-    videoEl.srcObject = localStream;
+      const colRef = collection(db, "videos", fechaKey, "registros");
 
-    prepararSocket();
-    await crearPeerConnection();
-    await reenviarOferta();
+      const payload = {
+        codigo,
+        nombre,
+        
+        fecha: fechaTexto,
+        hora: horaTexto,
+        lat,
+        lng,
+        activo: true,
+        creadoEn: serverTimestamp()
+      };
 
-    await registrarInicio({ codigo: roomId, nombre });
+      const docRef = await addDoc(colRef, payload);
+      console.log("🔥 Doc creado:", docRef.id);
+      return docRef;
+    }
 
-    formSection.classList.add("hidden");
-    videoSection.classList.remove("hidden");
+    async function marcarFin() {
+      if (!currentDocRef) return;
+      await updateDoc(currentDocRef, {
+        activo: false,
+        finalizadoEn: serverTimestamp()
+      });
+      console.log("📌 Marcado como finalizado");
+    }
 
-    setEstado("Esperando visor…");
+    /*
+    ========================================================
+    🔵 WEBRTC + SOCKET.IO
+    ========================================================
+    */
 
-  } catch (err) {
-    console.error("Error general:", err);
-    alert("No se pudo iniciar la transmisión.");
-  }
-}
+    function prepararSocket() {
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
 
-async function stop() {
-  if (socket) socket.disconnect();
-  if (pc) pc.close();
+      socket = io(SIGNALING_URL, { transports: ["websocket"] });
 
-  if (localStream) {
-    localStream.getTracks().forEach(t => t.stop());
-  }
+      socket.on("connect", () => {
+        console.log("🔗 Socket conectado");
+        socket.emit("join-room", { roomId, role: "sender" });
+      });
 
-  videoEl.srcObject = null;
+      socket.on("answer", async ({ answer }) => {
+        console.log("⬅️ ANSWER recibida");
+        if (pc.signalingState !== "closed") {
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        }
+      });
 
-  if (currentDocRef) {
-    await updateDoc(currentDocRef, {
-      activo: false,
-      finalizadoEn: serverTimestamp()
-    });
-  }
+      socket.on("ice-candidate", ({ candidate }) => {
+        if (candidate && pc) {
+          pc.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+      });
 
-  formSection.classList.remove("hidden");
-  videoSection.classList.add("hidden");
+      socket.on("user-joined", () => {
+        console.log("👁 Visor se conectó → reenviando offer");
+        reenviarOferta();
+      });
+      // 🛑 DETENER TRANSMISIÓN CUANDO LA WEB LO ORDENA
+      socket.on("detener-desde-web", () => {
+        console.log("🛑 Orden recibida desde la web → deteniendo transmisión");
+        stop();
+      });
 
-  setEstado("Transmisión detenida");
-}
+    }
 
-/* =======================================================
-   EVENTOS
-======================================================= */
-btnStart.onclick = start;
-btnStop.onclick = stop;
+    async function crearPeerConnection() {
+      pc = new RTCPeerConnection(pcConfig);
+
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          socket.emit("ice-candidate", {
+            roomId,
+            candidate: e.candidate
+          });
+        }
+      };
+
+      localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    }
+
+    async function reenviarOferta() {
+      if (!pc) return;
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      socket.emit("offer", { roomId, offer });
+      console.log("➡️ OFFER reenviada");
+      setEstado("Conectando visor…");
+    }
+
+    /*
+    ========================================================
+    🔵 CONTROLES PRINCIPALES
+    ========================================================
+    */
+
+    async function start() {
+      roomId = codigoInput.value.trim().toUpperCase();
+      const nombre = nombreInput.value.trim();
+      
+
+      if (!roomId) return alert("Ingresa el código");
+      if (!nombre) return alert("Ingresa el nombre");
+      
+
+      try {
+        setEstado("Activando cámara...");
+
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false
+        });
+
+        videoEl.srcObject = localStream;
+
+        prepararSocket();
+        await crearPeerConnection();
+        await reenviarOferta();
+
+        setEstado("Registrando en Firestore…");
+
+        currentDocRef = await registrarInicio({ codigo: roomId, nombre });
+
+        transmitting = true;
+        btnToggle.textContent = "Detener transmisión";
+        btnToggle.classList.remove("btn-primary");
+        btnToggle.classList.add("btn-danger");
+
+        setEstado("Esperando visor…");
+
+      } catch (err) {
+        console.error("ERROR:", err);
+        alert("Error iniciando transmisión");
+      }
+    }
+
+    async function stop() {
+      if (socket) socket.disconnect();
+      if (pc) pc.close();
+
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+      }
+
+      videoEl.srcObject = null;
+
+      await marcarFin();
+      currentDocRef = null;
+
+      transmitting = false;
+      btnToggle.textContent = "Iniciar transmisión";
+      btnToggle.classList.add("btn-primary");
+      btnToggle.classList.remove("btn-danger");
+
+      setEstado("Transmisión detenida");
+    }
+
+    btnToggle.onclick = () => transmitting ? stop() : start();
+
+  </script>
+
+</body>
+</html>
